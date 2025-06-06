@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Club Z Dashboard</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .dashboard-container {
+      background-color: white;
+      padding: 40px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      text-align: center;
+      width: 350px;
+    }
+
+    h2 {
+      margin-bottom: 30px;
+      color: #333;
+    }
+
+    .option-button {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      font-size: 16px;
+      border-radius: 6px;
+      border: none;
+      background-color: #005aaa;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .option-button:hover {
+      background-color: #004488;
+    }
+  </style>
+</head>
+<body>
+  <div class="dashboard-container">
+    <h2>What would you like to do?</h2>
+    <form action="/timesheet" method="GET">
+      <button type="submit" class="option-button">Create Tutor Time Sheet</button>
+    </form>
+    <form action="/attendance" method="GET">
+      <button type="submit" class="option-button">Create Student Attendance Sheet</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -8,14 +8,14 @@ const PORT = 3000;
 
 // Middleware
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.static('public')); // Serves ClubZ Logo.jpg and other static files
 
-// Serve index.html
+// Serve login page
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Handle login POST
+// Handle login form POST
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
 
@@ -28,19 +28,35 @@ app.post('/login', (req, res) => {
     const users = JSON.parse(data);
 
     if (users[username] && users[username] === password) {
-      res.send(`<h2>Welcome, ${username}!</h2><a href="/">Back to login</a>`);
-      // Later you can redirect to: res.redirect('/dashboard') or similar
+      // Successful login, redirect to dashboard
+      res.redirect('/dashboard');
     } else {
+      // Failed login
       res.send(`
         <h2>Login Failed</h2>
         <p>Invalid username or password.</p>
-        <a href="/">Try again</a>
+        <a href="/">Try Again</a>
       `);
     }
   });
 });
 
-// Start server
+// Serve dashboard
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard.html'));
+});
+
+// Placeholder route for timesheet
+app.get('/timesheet', (req, res) => {
+  res.send('<h2>Time Sheet Form Coming Soon!</h2>');
+});
+
+// Placeholder route for attendance
+app.get('/attendance', (req, res) => {
+  res.send('<h2>Attendance Sheet Form Coming Soon!</h2>');
+});
+
+// Start the server
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
 });
