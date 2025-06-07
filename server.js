@@ -5,7 +5,8 @@ const fs = require('fs');
 const path = require('path');
 const generatePDF = require('./generate-pdf'); // PDF generator
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
+
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
