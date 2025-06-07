@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tutor Time Sheet</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .form-container {
+      background-color: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      width: 350px;
+      text-align: center;
+    }
+
+    .form-container h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    .form-container input {
+      width: 100%;
+      padding: 10px;
+      margin: 10px 0;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    .form-container button {
+      width: 100%;
+      padding: 10px;
+      background-color: #005aaa;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    .form-container button:hover {
+      background-color: #004488;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Tutor Time Sheet</h2>
+    <form action="/submit-timesheet" method="POST">
+      <input type="text" name="tutorName" placeholder="Full Name" required>
+      <input type="text" name="month" placeholder="Month (e.g., June)" required>
+      <button type="submit">Continue</button>
+    </form>
+  </div>
+</body>
+</html>
