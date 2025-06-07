@@ -1,3 +1,4 @@
+const generatePDFBuffer = require('./generate-pdf');
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -109,4 +110,15 @@ app.get('/attendance', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(`Server running at http://localhost:${PORT}`);
+});
+app.get('/download-pdf', async (req, res) => {
+  try {
+    const pdfBuffer = await generatePDFBuffer();
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=Tutor_Time_Summary.pdf');
+    res.send(pdfBuffer);
+  } catch (err) {
+    res.status(500).send('Error generating PDF.');
+  }
 });

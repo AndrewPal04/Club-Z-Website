@@ -26,23 +26,29 @@
       font-size: 16px;
       margin: 20px 0;
     }
-    a {
+    .button-link {
       display: inline-block;
-      margin-top: 20px;
+      margin-top: 15px;
       text-decoration: none;
       color: white;
       background: #0077cc;
       padding: 10px 20px;
       border-radius: 8px;
+      transition: background-color 0.2s ease-in-out;
+    }
+    .button-link:hover {
+      background: #005fa3;
     }
   </style>
 </head>
 <body>
   <div class="box">
     <h2>✅ PDF Successfully Created</h2>
-    <p>Your Tutor Time Summary has been saved to your Downloads folder.</p>
+    <p>Your Tutor Time Summary is ready.</p>
     <p><strong>Please remember to sign and date the document before submitting it.</strong></p>
-    <a href="/dashboard">Return to Dashboard</a>
+
+    <a href="/download-pdf" class="button-link" download>⬇️ Download PDF</a><br>
+    <a href="/dashboard" class="button-link">🏠 Return to Dashboard</a>
   </div>
 </body>
 </html>
