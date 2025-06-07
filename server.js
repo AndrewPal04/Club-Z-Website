@@ -2,7 +2,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
-
+const generatePDF = require('./generate-pdf'); // PDF generator
 const app = express();
 const PORT = 3000;
 
@@ -48,7 +48,7 @@ app.post('/submit-timesheet', (req, res) => {
   const { tutorName, month } = req.body;
 
   fs.writeFileSync('currentSession.json', JSON.stringify({ tutorName, month }));
-  fs.writeFileSync('students.json', JSON.stringify([]));
+  fs.writeFileSync('students.json', JSON.stringify([])); // Reset students
   res.redirect('/student-form');
 });
 
@@ -59,13 +59,15 @@ app.get('/student-form', (req, res) => {
   }
 
   if (students.length >= 12) {
-    res.send('<h2>Maximum of 12 students reached.</h2><a href="/dashboard">Back to Dashboard</a>');
+    generatePDF().then(() => {
+      res.sendFile(path.join(__dirname, 'pdf-generated.html'));
+    });
   } else {
     res.sendFile(path.join(__dirname, 'student-hours.html'));
   }
 });
 
-app.post('/submit-student', (req, res) => {
+app.post('/submit-student', async (req, res) => {
   const { studentFullName, inPersonHours, onlineHours } = req.body;
 
   const student = {
@@ -83,19 +85,21 @@ app.post('/submit-student', (req, res) => {
   fs.writeFileSync('students.json', JSON.stringify(students, null, 2));
 
   if (students.length >= 12) {
-    res.send('<h2>Maximum of 12 students reached.</h2><a href="/dashboard">Back to Dashboard</a>');
+    await generatePDF();
+    res.sendFile(path.join(__dirname, 'pdf-generated.html'));
   } else {
     res.sendFile(path.join(__dirname, 'add-another.html'));
   }
 });
 
-app.post('/add-another', (req, res) => {
+app.post('/add-another', async (req, res) => {
   const { choice } = req.body;
 
   if (choice === 'yes') {
     res.redirect('/student-form');
   } else {
-    res.send('<h2>Student data saved. Ready for PDF generation or final steps.</h2><a href="/dashboard">Back to Dashboard</a>');
+    await generatePDF();
+    res.sendFile(path.join(__dirname, 'pdf-generated.html'));
   }
 });
 
