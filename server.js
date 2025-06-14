@@ -1,12 +1,12 @@
 const generatePDFBuffer = require('./generate-pdf');
+const generatePDF = require('./generate-pdf');
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
-const generatePDF = require('./generate-pdf'); // PDF generator
+
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
@@ -48,9 +48,8 @@ app.get('/timesheet', (req, res) => {
 
 app.post('/submit-timesheet', (req, res) => {
   const { tutorName, month } = req.body;
-
   fs.writeFileSync('currentSession.json', JSON.stringify({ tutorName, month }));
-  fs.writeFileSync('students.json', JSON.stringify([])); // Reset students
+  fs.writeFileSync('students.json', JSON.stringify([]));
   res.redirect('/student-form');
 });
 
@@ -105,21 +104,60 @@ app.post('/add-another', async (req, res) => {
   }
 });
 
-app.get('/attendance', (req, res) => {
-  res.send('<h2>Attendance Sheet Form Coming Soon!</h2>');
-});
-
-app.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}`);
-});
 app.get('/download-pdf', async (req, res) => {
   try {
     const pdfBuffer = await generatePDFBuffer();
-
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', 'attachment; filename=Tutor_Time_Summary.pdf');
     res.send(pdfBuffer);
   } catch (err) {
     res.status(500).send('Error generating PDF.');
   }
+});
+
+app.get('/attendance', (req, res) => {
+  res.sendFile(path.join(__dirname, 'attendance-info.html'));
+});
+
+app.post('/submit-attendance-info', (req, res) => {
+  const { studentName, tutorName, month, subjects, grade } = req.body;
+
+  const attendanceInfo = {
+    studentName,
+    tutorName,
+    month,
+    subjects,
+    grade
+  };
+
+  fs.writeFileSync('currentAttendance.json', JSON.stringify(attendanceInfo, null, 2));
+  res.redirect('/attendance-sessions');
+});
+
+app.get('/attendance-sessions', (req, res) => {
+  res.sendFile(path.join(__dirname, 'attendance-sessions.html'));
+});
+
+app.post('/submit-attendance-sessions', (req, res) => {
+  const entries = [];
+
+  for (let i = 0; i < 12; i++) {
+    const date = req.body[`date${i}`];
+    const start = req.body[`start${i}`];
+    const end = req.body[`end${i}`];
+    const comments = req.body[`comments${i}`];
+
+    if (!date || !start || !end || !comments) continue;
+
+    const online = req.body[`online${i}`] ? true : false;
+
+    entries.push({ date, start, end, comments, online });
+  }
+
+  fs.writeFileSync('attendanceEntries.json', JSON.stringify(entries, null, 2));
+  res.send('<h2>Sessions saved successfully!</h2><p>PDF generation coming next.</p>');
+});
+
+app.listen(PORT, () => {
+  console.log(`Server running at http://localhost:${PORT}`);
 });

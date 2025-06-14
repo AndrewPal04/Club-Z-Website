@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Student Attendance Info</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #eef2f3;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    form {
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+    }
+    h2 {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    label {
+      display: block;
+      margin-top: 15px;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 20px;
+      width: 100%;
+      padding: 10px;
+      background-color: #0077cc;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+  </style>
+</head>
+<body>
+  <form action="/submit-attendance-info" method="POST">
+    <h2>Student Attendance Info</h2>
+    <label for="studentName">Student's Full Name</label>
+    <input type="text" name="studentName" required>
+
+    <label for="tutorName">Tutor's Full Name</label>
+    <input type="text" name="tutorName" required>
+
+    <label for="month">Month</label>
+    <input type="text" name="month" required>
+
+    <label for="subjects">Subject(s)</label>
+    <input type="text" name="subjects" required>
+
+    <label for="grade">Grade</label>
+    <input type="text" name="grade" required>
+
+    <button type="submit">Continue</button>
+  </form>
+</body>
+</html>

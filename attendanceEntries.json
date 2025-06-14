@@ -1,0 +1,16 @@
+[
+  {
+    "date": "6/13/2025",
+    "start": "18:00",
+    "end": "19:00",
+    "comments": "Worked on stuff",
+    "online": true
+  },
+  {
+    "date": "6/15/2025",
+    "start": "17:00",
+    "end": "18:00",
+    "comments": "More fun stuff",
+    "online": true
+  }
+]
