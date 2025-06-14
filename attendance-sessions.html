@@ -21,6 +21,7 @@
     th, td {
       padding: 10px;
       border: 1px solid #ccc;
+      vertical-align: top;
     }
     input[type="text"],
     input[type="time"],
@@ -32,6 +33,12 @@
     }
     input[type="checkbox"] {
       transform: scale(1.2);
+    }
+    .char-counter {
+      font-size: 12px;
+      color: #555;
+      margin-top: 4px;
+      display: block;
     }
     button {
       padding: 10px 20px;
@@ -61,10 +68,9 @@
           <th>Online</th>
         </tr>
       </thead>
-      <tbody id="sessionBody">
-
-      </tbody>
+      <tbody id="sessionBody"></tbody>
     </table>
+
     <button type="button" onclick="addRow()">Add More</button>
     <button type="submit">Submit</button>
   </form>
@@ -72,6 +78,7 @@
   <script>
     let count = 0;
     const maxRows = 12;
+    const maxChars = 82;
 
     function addRow() {
       if (count >= maxRows) return;
@@ -79,22 +86,52 @@
       const tbody = document.getElementById('sessionBody');
       const row = document.createElement('tr');
 
+      const textareaId = `comments${count}`;
+      const counterId = `counter${count}`;
+
       row.innerHTML = `
         <td><input type="text" name="date${count}" required></td>
         <td><input type="time" name="start${count}" required></td>
         <td><input type="time" name="end${count}" required></td>
-        <td><textarea name="comments${count}" rows="2" required></textarea></td>
+        <td>
+          <textarea name="${textareaId}" id="${textareaId}" rows="2" maxlength="${maxChars}" required></textarea>
+          <span class="char-counter" id="${counterId}">Characters remaining: ${maxChars}</span>
+        </td>
         <td style="text-align:center;"><input type="checkbox" name="online${count}"></td>
       `;
 
       tbody.appendChild(row);
+
+      const textarea = document.getElementById(textareaId);
+      const counter = document.getElementById(counterId);
+
+      textarea.addEventListener('input', () => {
+        const remaining = maxChars - textarea.value.length;
+        counter.textContent = `Characters remaining: ${remaining}`;
+      });
+
       count++;
     }
 
-    // Add the first row on page load
     window.onload = () => {
       addRow();
     };
+
+    document.getElementById('sessionForm').addEventListener('submit', function () {
+      const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+      let onlineCount = 0;
+      checkboxes.forEach(checkbox => {
+        if (checkbox.checked) onlineCount++;
+      });
+      const total = checkboxes.length;
+      const inPersonCount = total - onlineCount;
+
+      let hiddenFields = `
+        <input type="hidden" name="onlineCount" value="${onlineCount}">
+        <input type="hidden" name="inPersonCount" value="${inPersonCount}">
+      `;
+      this.insertAdjacentHTML('beforeend', hiddenFields);
+    });
   </script>
 </body>
 </html>
