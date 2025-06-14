@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>PDF Generated</title>
+  <title>Attendance PDF Generated</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -26,30 +26,25 @@
       font-size: 16px;
       margin: 20px 0;
     }
-    .button-link {
+    a {
       display: inline-block;
-      margin-top: 15px;
+      margin-top: 20px;
       text-decoration: none;
       color: white;
       background: #0077cc;
       padding: 10px 20px;
       border-radius: 8px;
-      transition: background-color 0.2s ease-in-out;
-    }
-    .button-link:hover {
-      background: #005fa3;
     }
   </style>
 </head>
 <body>
   <div class="box">
     <h2>✅ PDF Successfully Created</h2>
-    <p>Your Tutor Time Summary is ready.</p>
-    <p><strong>Please remember to sign and date the document before submitting it.</strong></p>
+    <p>Your Student Attendance Sheet has been saved.</p>
+    <p><strong>Please have Parent/Guardian Sign for In-Person Sessions</strong></p>
     <p>Please rename the file to match your manager's current naming format.</p>
-
-    <a href="/download-pdf" class="button-link" download>⬇️ Download PDF</a><br>
-    <a href="/dashboard" class="button-link">🏠 Return to Dashboard</a>
+    <a href="/download-attendance">Download Attendance PDF</a><br><br>
+    <a href="/dashboard">Return to Dashboard</a>
   </div>
 </body>
 </html>

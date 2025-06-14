@@ -1,5 +1,6 @@
 const generatePDFBuffer = require('./generate-pdf');
 const generatePDF = require('./generate-pdf');
+const generateAttendancePDF = require('./generate-attendance');
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -138,7 +139,7 @@ app.get('/attendance-sessions', (req, res) => {
   res.sendFile(path.join(__dirname, 'attendance-sessions.html'));
 });
 
-app.post('/submit-attendance-sessions', (req, res) => {
+app.post('/submit-attendance-sessions', async (req, res) => {
   const entries = [];
 
   for (let i = 0; i < 12; i++) {
@@ -155,7 +156,19 @@ app.post('/submit-attendance-sessions', (req, res) => {
   }
 
   fs.writeFileSync('attendanceEntries.json', JSON.stringify(entries, null, 2));
-  res.send('<h2>Sessions saved successfully!</h2><p>PDF generation coming next.</p>');
+
+  await generateAttendancePDF();
+  res.sendFile(path.join(__dirname, 'attendance-generated.html'));
+});
+
+app.get('/download-attendance', async (req, res) => {
+  try {
+    const filePath = await generateAttendancePDF();
+    res.download(filePath, 'Student_Attendance_Sheet.pdf');
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error generating attendance PDF.');
+  }
 });
 
 app.listen(PORT, () => {
