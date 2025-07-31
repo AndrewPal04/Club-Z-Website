@@ -1,16 +1,58 @@
 [
   {
-    "date": "6/13",
-    "start": "17:50",
-    "end": "18:50",
-    "comments": "whole lot of fun stuff the whole time",
+    "date": "7/7",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "5-7 sentence prompt writing and review on\r\n mental math and fractions.",
     "online": true
   },
   {
-    "date": "6/15",
-    "start": "16:00",
-    "end": "17:00",
-    "comments": "just worked on making a website for fun",
-    "online": false
+    "date": "7/9",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": " Short story summary writing and going over ratios and order of operations\r\n",
+    "online": true
+  },
+  {
+    "date": "7/14",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "Going over conjunctions in a sentence and\r\n review on finding value of a variable.",
+    "online": true
+  },
+  {
+    "date": "7/16",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "Practice with comma placement and ratio word problems.",
+    "online": true
+  },
+  {
+    "date": "7/21",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "Comma placement when listing in a sentence and continued variables.",
+    "online": true
+  },
+  {
+    "date": "7/23",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "4-5 sentence prompt writing and 2 step variable problems.",
+    "online": true
+  },
+  {
+    "date": "7/28",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "Began reading \"Hunger Games\" and using PEMDAS to solve variable problems.\r\n",
+    "online": true
+  },
+  {
+    "date": "7/30",
+    "start": "15:00",
+    "end": "16:00",
+    "comments": "Continued reading \"Hunger Games\" and learning about the square root.",
+    "online": true
   }
 ]

@@ -10,11 +10,25 @@ function formatTime(time) {
   return `${hour}:${minute.toString().padStart(2, '0')} ${suffix}`;
 }
 
-function wrapText(text, maxChars) {
+function wrapWords(text, maxChars) {
+  const paragraphs = text.split(/\r?\n/);
   const lines = [];
-  for (let i = 0; i < text.length; i += maxChars) {
-    lines.push(text.slice(i, i + maxChars));
-  }
+
+  paragraphs.forEach(paragraph => {
+    const words = paragraph.split(' ');
+    let line = '';
+
+    words.forEach(word => {
+      if ((line + word).length > maxChars) {
+        lines.push(line.trim());
+        line = '';
+      }
+      line += word + ' ';
+    });
+
+    if (line.trim()) lines.push(line.trim());
+  });
+
   return lines;
 }
 
@@ -37,41 +51,48 @@ async function generateAttendancePDF() {
   page.drawText(info.subjects, { x: 120, y: 665, size: fontSize, font });
   page.drawText(info.grade, { x: 300, y: 665, size: fontSize, font });
 
-  let y = 560;
-  sessions.slice(0, 12).forEach(session => {
+  const rowY = [558, 528, 499, 470, 441, 411, 382, 353, 313, 294, 264, 234];
+
+  sessions.slice(0, 12).forEach((session, i) => {
+    const y = rowY[i];
+
     page.drawText(session.date, { x: 20, y, size: fontSize, font });
     page.drawText(formatTime(session.start), { x: 65, y, size: fontSize, font });
     page.drawText(formatTime(session.end), { x: 130, y, size: fontSize, font });
 
-    const maxCharsPerLine = 41;
-    const line1 = session.comments.slice(0, maxCharsPerLine);
-    const line2 = session.comments.slice(maxCharsPerLine, maxCharsPerLine * 2);
-    page.drawText(line1, { x: 185, y: y + 12, size: fontSize, font });
-    if (line2) page.drawText(line2, { x: 185, y, size: fontSize, font });
+    const lines = wrapWords(session.comments, 41).slice(0, 2);
+    lines.forEach((line, j) => {
+      page.drawText(line, {
+        x: 185,
+        y: y + 17 - j * 12,
+        size: fontSize,
+        font
+      });
+    });
 
-    if (session.online) page.drawText('X', { x: 582, y: y + 3, size: fontSize + 3, font });
-    y -= line2 ? 41 : 29;
+    if (session.online) {
+      page.drawText('X', { x: 582, y: y + 5, size: fontSize + 3, font });
+    }
   });
 
   const progress = (extra.monthlyProgress || '').slice(0, 400);
-  const progressLines = wrapText(progress, 100);
+  const progressLines = wrapWords(progress, 100);
   let progressY = 170;
   progressLines.forEach(line => {
     page.drawText(line, { x: 60, y: progressY, size: fontSize, font });
     progressY -= 20;
   });
 
-    const [rYear, rMonth, rDay] = extra.reviewDate.split('-');
-    const formattedReviewDate = `${rMonth}/${rDay}/${rYear}`;
-    page.drawText(formattedReviewDate, { x: 300, y: 80, size: fontSize, font });
+  const [rYear, rMonth, rDay] = extra.reviewDate.split('-');
+  const formattedReviewDate = `${rMonth}/${rDay}/${rYear}`;
+  page.drawText(formattedReviewDate, { x: 300, y: 80, size: fontSize, font });
 
+  page.drawText(`${counts.onlineCount}`, { x: 500, y: 210, size: fontSize, font });
+  page.drawText(`${counts.inPersonCount}`, { x: 360, y: 210, size: fontSize, font });
 
-    page.drawText(`${counts.onlineCount}`, { x: 500, y: 210, size: fontSize, font });
-    page.drawText(`${counts.inPersonCount}`, { x: 360, y: 210, size: fontSize, font });
-
-    fs.writeFileSync(outputPath, await pdfDoc.save());
-    console.log(`✅ Attendance PDF generated at: ${outputPath}`);
-    return outputPath;
+  fs.writeFileSync(outputPath, await pdfDoc.save());
+  console.log(`✅ Attendance PDF generated at: ${outputPath}`);
+  return outputPath;
 }
 
 module.exports = generateAttendancePDF;
