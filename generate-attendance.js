@@ -51,7 +51,7 @@ async function generateAttendancePDF() {
   page.drawText(info.subjects, { x: 120, y: 665, size: fontSize, font });
   page.drawText(info.grade, { x: 300, y: 665, size: fontSize, font });
 
-  const rowY = [558, 528, 499, 470, 441, 411, 382, 353, 313, 294, 264, 234];
+  const rowY = [558, 528, 499, 470, 441, 411, 382, 353, 323, 294, 264, 234];
 
   sessions.slice(0, 12).forEach((session, i) => {
     const y = rowY[i];
