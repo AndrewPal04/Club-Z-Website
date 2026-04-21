@@ -17,6 +17,7 @@ const generateAttendancePDF = require('./generate-attendance');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
