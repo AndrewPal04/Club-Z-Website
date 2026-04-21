@@ -28,24 +28,42 @@
       color: #333;
     }
 
+    .field-wrap {
+      margin: 10px 0;
+      text-align: left;
+    }
+
     .form-container input {
       width: 100%;
       padding: 10px;
-      margin: 10px 0;
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    .form-container input.input-error {
+      border-color: #d32f2f;
+    }
+
+    .error-msg {
+      display: block;
+      color: #d32f2f;
+      font-size: 12px;
+      margin-top: 4px;
     }
 
     .form-container button {
       width: 100%;
       padding: 10px;
+      margin-top: 14px;
       background-color: #005aaa;
       color: white;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
+      font-size: 16px;
     }
 
     .form-container button:hover {
@@ -56,11 +74,55 @@
 <body>
   <div class="form-container">
     <h2>Tutor Time Sheet</h2>
-    <form action="/submit-timesheet" method="POST">
-      <input type="text" name="tutorName" placeholder="Full Name" required>
-      <input type="text" name="month" placeholder="Month (e.g., June)" required>
+    <form id="timesheetForm" action="/submit-timesheet" method="POST" novalidate>
+      <div class="field-wrap">
+        <input type="text" id="tutorName" name="tutorName" placeholder="Full Name">
+        <span class="error-msg" id="tutorNameErr"></span>
+      </div>
+      <div class="field-wrap">
+        <input type="text" id="month" name="month" placeholder="Month (e.g., June)">
+        <span class="error-msg" id="monthErr"></span>
+      </div>
       <button type="submit">Continue</button>
     </form>
   </div>
+  <script>
+    function showError(input, errId, msg) {
+      input.classList.add('input-error');
+      document.getElementById(errId).textContent = msg;
+    }
+
+    function clearError(input, errId) {
+      input.classList.remove('input-error');
+      document.getElementById(errId).textContent = '';
+    }
+
+    const tutorName = document.getElementById('tutorName');
+    const month = document.getElementById('month');
+
+    tutorName.addEventListener('input', () => clearError(tutorName, 'tutorNameErr'));
+    month.addEventListener('input', () => clearError(month, 'monthErr'));
+
+    document.getElementById('timesheetForm').addEventListener('submit', e => {
+      let valid = true;
+      if (!tutorName.value.trim()) {
+        showError(tutorName, 'tutorNameErr', 'Tutor name is required.');
+        valid = false;
+      }
+      if (!month.value.trim()) {
+        showError(month, 'monthErr', 'Month is required.');
+        valid = false;
+      }
+      if (!valid) e.preventDefault();
+    });
+
+    fetch('/draft/timesheet')
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return;
+        tutorName.value = data.tutor_name || '';
+        month.value = data.month || '';
+      });
+  </script>
 </body>
 </html>

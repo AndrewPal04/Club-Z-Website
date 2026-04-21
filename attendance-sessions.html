@@ -30,6 +30,17 @@
       padding: 6px;
       border-radius: 4px;
       border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    input.input-error,
+    textarea.input-error {
+      border-color: #d32f2f;
+    }
+    .error-msg {
+      display: block;
+      color: #d32f2f;
+      font-size: 11px;
+      margin-top: 3px;
     }
     input[type="checkbox"] {
       transform: scale(1.2);
@@ -39,6 +50,12 @@
       color: #555;
       margin-top: 4px;
       display: block;
+    }
+    .form-error {
+      color: #d32f2f;
+      font-size: 14px;
+      margin-bottom: 10px;
+      display: none;
     }
     button {
       padding: 10px 20px;
@@ -57,7 +74,8 @@
 </head>
 <body>
   <h2>Enter Up to 12 Attendance Sessions</h2>
-  <form id="sessionForm" action="/submit-attendance-sessions" method="POST">
+  <p id="formError" class="form-error"></p>
+  <form id="sessionForm" action="/submit-attendance-sessions" method="POST" novalidate>
     <table id="sessionTable">
       <thead>
         <tr>
@@ -80,57 +98,115 @@
     const maxRows = 12;
     const maxChars = 82;
 
-    function addRow() {
+    function addRow(data) {
       if (count >= maxRows) return;
 
       const tbody = document.getElementById('sessionBody');
       const row = document.createElement('tr');
-
       const textareaId = `comments${count}`;
-      const counterId = `counter${count}`;
+      const counterId  = `counter${count}`;
+      const timeErrId  = `timeErr${count}`;
+      const i = count;
+
+      const commentVal = data ? (data.comments || '') : '';
+      const remaining  = maxChars - commentVal.length;
 
       row.innerHTML = `
-        <td><input type="text" name="date${count}" required></td>
-        <td><input type="time" name="start${count}" required></td>
-        <td><input type="time" name="end${count}" required></td>
+        <td><input type="text" name="date${i}" value="${data ? data.date : ''}"></td>
         <td>
-          <textarea name="${textareaId}" id="${textareaId}" rows="2" maxlength="${maxChars}" required></textarea>
-          <span class="char-counter" id="${counterId}">Characters remaining: ${maxChars}</span>
+          <input type="time" name="start${i}" value="${data ? data.start_time : ''}">
         </td>
-        <td style="text-align:center;"><input type="checkbox" name="online${count}"></td>
+        <td>
+          <input type="time" name="end${i}" value="${data ? data.end_time : ''}">
+          <span class="error-msg" id="${timeErrId}"></span>
+        </td>
+        <td>
+          <textarea name="${textareaId}" id="${textareaId}" rows="2" maxlength="${maxChars}">${commentVal}</textarea>
+          <span class="char-counter" id="${counterId}">${remaining} / ${maxChars} characters remaining</span>
+        </td>
+        <td style="text-align:center;">
+          <input type="checkbox" name="online${i}" ${data && data.is_online ? 'checked' : ''}>
+        </td>
       `;
 
       tbody.appendChild(row);
 
       const textarea = document.getElementById(textareaId);
-      const counter = document.getElementById(counterId);
-
+      const counter  = document.getElementById(counterId);
       textarea.addEventListener('input', () => {
-        const remaining = maxChars - textarea.value.length;
-        counter.textContent = `Characters remaining: ${remaining}`;
+        counter.textContent = `${maxChars - textarea.value.length} / ${maxChars} characters remaining`;
       });
+
+      // Clear time error when either time field changes
+      const startInput = row.querySelector(`[name="start${i}"]`);
+      const endInput   = row.querySelector(`[name="end${i}"]`);
+      const timeErr    = document.getElementById(timeErrId);
+      function clearTimeErr() {
+        startInput.classList.remove('input-error');
+        endInput.classList.remove('input-error');
+        timeErr.textContent = '';
+      }
+      startInput.addEventListener('change', clearTimeErr);
+      endInput.addEventListener('change', clearTimeErr);
 
       count++;
     }
 
     window.onload = () => {
-      addRow();
+      fetch('/draft/attendance/sessions')
+        .then(r => r.json())
+        .then(entries => {
+          if (!entries || entries.length === 0) {
+            addRow();
+          } else {
+            entries.forEach(e => addRow(e));
+          }
+        });
     };
 
-    document.getElementById('sessionForm').addEventListener('submit', function () {
+    document.getElementById('sessionForm').addEventListener('submit', function (e) {
+      const rows = document.getElementById('sessionBody').querySelectorAll('tr');
+      let valid = true;
+      let hasAnyRow = false;
+      const formError = document.getElementById('formError');
+      formError.style.display = 'none';
+
+      rows.forEach((row, i) => {
+        const dateEl  = row.querySelector(`[name="date${i}"]`);
+        const startEl = row.querySelector(`[name="start${i}"]`);
+        const endEl   = row.querySelector(`[name="end${i}"]`);
+        const commEl  = document.getElementById(`comments${i}`);
+        const timeErr = document.getElementById(`timeErr${i}`);
+
+        const hasAny = dateEl.value || startEl.value || endEl.value || commEl.value;
+        if (!hasAny) return;
+        hasAnyRow = true;
+
+        if (startEl.value && endEl.value && startEl.value >= endEl.value) {
+          startEl.classList.add('input-error');
+          endEl.classList.add('input-error');
+          timeErr.textContent = 'Start must be before end time.';
+          valid = false;
+        }
+      });
+
+      if (!hasAnyRow) {
+        formError.textContent = 'At least one session is required.';
+        formError.style.display = 'block';
+        valid = false;
+      }
+
+      if (!valid) { e.preventDefault(); return; }
+
+      // Append counts before submit
       const checkboxes = document.querySelectorAll('input[type="checkbox"]');
       let onlineCount = 0;
-      checkboxes.forEach(checkbox => {
-        if (checkbox.checked) onlineCount++;
-      });
-      const total = checkboxes.length;
-      const inPersonCount = total - onlineCount;
-
-      let hiddenFields = `
+      checkboxes.forEach(cb => { if (cb.checked) onlineCount++; });
+      const inPersonCount = checkboxes.length - onlineCount;
+      this.insertAdjacentHTML('beforeend', `
         <input type="hidden" name="onlineCount" value="${onlineCount}">
         <input type="hidden" name="inPersonCount" value="${inPersonCount}">
-      `;
-      this.insertAdjacentHTML('beforeend', hiddenFields);
+      `);
     });
   </script>
 </body>

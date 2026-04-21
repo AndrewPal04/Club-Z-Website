@@ -9,9 +9,11 @@
       background-color: #f4f6f8;
       display: flex;
       justify-content: center;
-      align-items: center;
-      height: 100vh;
+      align-items: flex-start;
+      min-height: 100vh;
       margin: 0;
+      padding: 40px 20px;
+      box-sizing: border-box;
     }
 
     .dashboard-container {
@@ -20,7 +22,8 @@
       border-radius: 12px;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
       text-align: center;
-      width: 350px;
+      width: 100%;
+      max-width: 480px;
     }
 
     h2 {
@@ -40,10 +43,123 @@
       color: white;
       cursor: pointer;
       font-weight: bold;
+      text-decoration: none;
     }
 
     .option-button:hover {
       background-color: #004488;
+    }
+
+    .logout-button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 24px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: white;
+      color: #666;
+      cursor: pointer;
+    }
+
+    .logout-button:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    .drafts-section {
+      margin-top: 32px;
+      text-align: left;
+      border-top: 1px solid #e8e8e8;
+      padding-top: 24px;
+    }
+
+    .drafts-section h3 {
+      font-size: 15px;
+      color: #555;
+      margin: 0 0 14px 0;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .draft-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border: 1px solid #dde3ea;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      background: #f9fbfd;
+    }
+
+    .draft-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .draft-type {
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #005aaa;
+      margin-bottom: 3px;
+    }
+
+    .draft-name {
+      font-size: 14px;
+      font-weight: bold;
+      color: #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .draft-updated {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .resume-button {
+      flex-shrink: 0;
+      margin-left: 12px;
+      padding: 7px 14px;
+      font-size: 13px;
+      border-radius: 6px;
+      border: none;
+      background-color: #005aaa;
+      color: white;
+      cursor: pointer;
+      font-weight: bold;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .resume-button:hover {
+      background-color: #004488;
+    }
+
+    .no-drafts {
+      font-size: 13px;
+      color: #aaa;
+      text-align: center;
+      padding: 10px 0;
+    }
+
+    .history-link {
+      display: block;
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13px;
+      color: #005aaa;
+      text-decoration: none;
+    }
+
+    .history-link:hover {
+      text-decoration: underline;
     }
   </style>
 </head>
@@ -56,6 +172,60 @@
     <form action="/attendance" method="GET">
       <button type="submit" class="option-button">Create Student Attendance Sheet</button>
     </form>
+
+    <a href="/history" class="history-link">View completed document history &rarr;</a>
+
+    <div class="drafts-section">
+      <h3>Your Drafts This Month</h3>
+      <div id="drafts-list"><p class="no-drafts">Loading...</p></div>
+    </div>
+
+    <form action="/logout" method="POST">
+      <button type="submit" class="logout-button">Log Out</button>
+    </form>
   </div>
+
+  <script>
+    function timeAgo(utcString) {
+      const updated = new Date(utcString + 'Z');
+      const diff = Math.floor((Date.now() - updated.getTime()) / 1000);
+      if (diff < 60) return 'just now';
+      if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+      if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+      return `${Math.floor(diff / 86400)}d ago`;
+    }
+
+    async function loadDrafts() {
+      const list = document.getElementById('drafts-list');
+      try {
+        const res = await fetch('/drafts');
+        const { timesheets, attendances } = await res.json();
+        const all = [
+          ...timesheets.map(d => ({ ...d, type: 'timesheet', label: 'Tutor Time Sheet', resumeUrl: `/resume/timesheet/${d.id}`, name: d.tutor_name })),
+          ...attendances.map(d => ({ ...d, type: 'attendance', label: 'Attendance Sheet', resumeUrl: `/resume/attendance/${d.id}`, name: d.student_name }))
+        ].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+
+        if (all.length === 0) {
+          list.innerHTML = '<p class="no-drafts">No drafts this month.</p>';
+          return;
+        }
+
+        list.innerHTML = all.map(d => `
+          <div class="draft-card">
+            <div class="draft-info">
+              <div class="draft-type">${d.label}</div>
+              <div class="draft-name">${d.name} &mdash; ${d.month}</div>
+              <div class="draft-updated">Last saved ${timeAgo(d.updated_at)}</div>
+            </div>
+            <a href="${d.resumeUrl}" class="resume-button">Resume</a>
+          </div>
+        `).join('');
+      } catch {
+        list.innerHTML = '<p class="no-drafts">Could not load drafts.</p>';
+      }
+    }
+
+    loadDrafts();
+  </script>
 </body>
 </html>

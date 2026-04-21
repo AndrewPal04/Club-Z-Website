@@ -10,7 +10,10 @@
       display: flex;
       justify-content: center;
       align-items: center;
-      height: 100vh;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      box-sizing: border-box;
     }
     form {
       background: white;
@@ -27,13 +30,25 @@
     label {
       display: block;
       margin-top: 15px;
+      font-weight: bold;
     }
-    input, textarea {
+    input {
       width: 100%;
       padding: 8px;
       margin-top: 5px;
       border-radius: 6px;
       border: 1px solid #ccc;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+    input.input-error {
+      border-color: #d32f2f;
+    }
+    .error-msg {
+      display: block;
+      color: #d32f2f;
+      font-size: 12px;
+      margin-top: 3px;
     }
     button {
       margin-top: 20px;
@@ -44,28 +59,83 @@
       border: none;
       border-radius: 6px;
       font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005fa3;
     }
   </style>
 </head>
 <body>
-  <form action="/submit-attendance-info" method="POST">
+  <form id="attendanceInfoForm" action="/submit-attendance-info" method="POST" novalidate>
     <h2>Student Attendance Info</h2>
+
     <label for="studentName">Student's Full Name</label>
-    <input type="text" name="studentName" required>
+    <input type="text" id="studentName" name="studentName">
+    <span class="error-msg" id="studentNameErr"></span>
 
     <label for="tutorName">Tutor's Full Name</label>
-    <input type="text" name="tutorName" required>
+    <input type="text" id="tutorName" name="tutorName">
+    <span class="error-msg" id="tutorNameErr"></span>
 
     <label for="month">Month</label>
-    <input type="text" name="month" required>
+    <input type="text" id="month" name="month">
+    <span class="error-msg" id="monthErr"></span>
 
     <label for="subjects">Subject(s)</label>
-    <input type="text" name="subjects" required>
+    <input type="text" id="subjects" name="subjects">
+    <span class="error-msg" id="subjectsErr"></span>
 
     <label for="grade">Grade</label>
-    <input type="text" name="grade" required>
+    <input type="text" id="grade" name="grade">
+    <span class="error-msg" id="gradeErr"></span>
 
     <button type="submit">Continue</button>
   </form>
+  <script>
+    function showError(id, errId, msg) {
+      document.getElementById(id).classList.add('input-error');
+      document.getElementById(errId).textContent = msg;
+    }
+
+    function clearError(id, errId) {
+      document.getElementById(id).classList.remove('input-error');
+      document.getElementById(errId).textContent = '';
+    }
+
+    const fields = [
+      { id: 'studentName', errId: 'studentNameErr', label: 'Student name' },
+      { id: 'tutorName',   errId: 'tutorNameErr',   label: 'Tutor name' },
+      { id: 'month',       errId: 'monthErr',        label: 'Month' },
+      { id: 'subjects',    errId: 'subjectsErr',     label: 'Subject(s)' },
+      { id: 'grade',       errId: 'gradeErr',        label: 'Grade' },
+    ];
+
+    fields.forEach(({ id, errId }) => {
+      document.getElementById(id).addEventListener('input', () => clearError(id, errId));
+    });
+
+    document.getElementById('attendanceInfoForm').addEventListener('submit', e => {
+      let valid = true;
+      fields.forEach(({ id, errId, label }) => {
+        if (!document.getElementById(id).value.trim()) {
+          showError(id, errId, `${label} is required.`);
+          valid = false;
+        }
+      });
+      if (!valid) e.preventDefault();
+    });
+
+    fetch('/draft/attendance/info')
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return;
+        document.getElementById('studentName').value = data.student_name || '';
+        document.getElementById('tutorName').value   = data.tutor_name  || '';
+        document.getElementById('month').value       = data.month       || '';
+        document.getElementById('subjects').value    = data.subjects    || '';
+        document.getElementById('grade').value       = data.grade       || '';
+      });
+  </script>
 </body>
 </html>

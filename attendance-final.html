@@ -20,6 +20,7 @@
     label {
       display: block;
       margin: 15px 0 5px;
+      font-weight: bold;
     }
     textarea, input[type="date"] {
       width: 100%;
@@ -27,6 +28,17 @@
       font-size: 16px;
       border-radius: 4px;
       border: 1px solid #ccc;
+      box-sizing: border-box;
+    }
+    textarea.input-error,
+    input.input-error {
+      border-color: #d32f2f;
+    }
+    .error-msg {
+      display: block;
+      color: #d32f2f;
+      font-size: 12px;
+      margin-top: 3px;
     }
     .char-counter {
       font-size: 12px;
@@ -42,29 +54,77 @@
       border: none;
       border-radius: 6px;
       cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #005fa3;
     }
   </style>
 </head>
 <body>
   <h2>Final Attendance Details</h2>
-  <form action="/submit-attendance-final" method="POST">
+  <form id="finalForm" action="/submit-attendance-final" method="POST" novalidate>
     <label for="monthlyProgress">Monthly Progress</label>
-    <textarea id="monthlyProgress" name="monthlyProgress" maxlength="400" rows="4" required></textarea>
-    <span id="progressCounter" class="char-counter">Characters remaining: 400</span>
+    <textarea id="monthlyProgress" name="monthlyProgress" maxlength="400" rows="4"></textarea>
+    <span id="progressCounter" class="char-counter">400 / 400 characters remaining</span>
+    <span class="error-msg" id="progressErr"></span>
 
     <label for="reviewDate">Date Reviewed with Parent/Guardian</label>
-    <input type="date" id="reviewDate" name="reviewDate" required>
+    <input type="date" id="reviewDate" name="reviewDate">
+    <span class="error-msg" id="dateErr"></span>
 
     <button type="submit">Generate PDF</button>
   </form>
 
   <script>
     const textarea = document.getElementById('monthlyProgress');
-    const counter = document.getElementById('progressCounter');
+    const counter  = document.getElementById('progressCounter');
+
     textarea.addEventListener('input', () => {
-      const remaining = 400 - textarea.value.length;
-      counter.textContent = `Characters remaining: ${remaining}`;
+      counter.textContent = `${400 - textarea.value.length} / 400 characters remaining`;
+      clearError(textarea, 'progressErr');
     });
+
+    document.getElementById('reviewDate').addEventListener('change', () => {
+      clearError(document.getElementById('reviewDate'), 'dateErr');
+    });
+
+    function showError(el, errId, msg) {
+      el.classList.add('input-error');
+      document.getElementById(errId).textContent = msg;
+    }
+
+    function clearError(el, errId) {
+      el.classList.remove('input-error');
+      document.getElementById(errId).textContent = '';
+    }
+
+    document.getElementById('finalForm').addEventListener('submit', e => {
+      let valid = true;
+      if (!textarea.value.trim()) {
+        showError(textarea, 'progressErr', 'Monthly progress is required.');
+        valid = false;
+      }
+      const dateEl = document.getElementById('reviewDate');
+      if (!dateEl.value) {
+        showError(dateEl, 'dateErr', 'Review date is required.');
+        valid = false;
+      }
+      if (!valid) e.preventDefault();
+    });
+
+    fetch('/draft/attendance/extra')
+      .then(r => r.json())
+      .then(data => {
+        if (!data) return;
+        if (data.progress_notes) {
+          textarea.value = data.progress_notes;
+          counter.textContent = `${400 - data.progress_notes.length} / 400 characters remaining`;
+        }
+        if (data.review_date) {
+          document.getElementById('reviewDate').value = data.review_date;
+        }
+      });
   </script>
 </body>
 </html>
