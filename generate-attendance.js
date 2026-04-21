@@ -32,18 +32,13 @@ function wrapWords(text, maxChars) {
   return lines;
 }
 
-async function generateAttendancePDF() {
+async function generateAttendancePDF(info, sessions, counts, extra) {
   const templatePath = path.join(__dirname, 'Student Attendance Sheet TEMPLATE.pdf');
   const outputPath = path.join(__dirname, 'public', 'Student_Attendance_Sheet.pdf');
   const pdfDoc = await PDFDocument.load(fs.readFileSync(templatePath));
   const page = pdfDoc.getPages()[0];
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
   const fontSize = 11;
-
-  const info = JSON.parse(fs.readFileSync('currentAttendance.json'));
-  const sessions = JSON.parse(fs.readFileSync('attendanceEntries.json'));
-  const counts = JSON.parse(fs.readFileSync('attendanceCounts.json'));
-  const extra = JSON.parse(fs.readFileSync('attendanceExtra.json'));
 
   page.drawText(info.studentName, { x: 120, y: 690, size: fontSize, font });
   page.drawText(info.tutorName, { x: 300, y: 690, size: fontSize, font });
@@ -57,10 +52,10 @@ async function generateAttendancePDF() {
     const y = rowY[i];
 
     page.drawText(session.date, { x: 20, y, size: fontSize, font });
-    page.drawText(formatTime(session.start), { x: 65, y, size: fontSize, font });
-    page.drawText(formatTime(session.end), { x: 130, y, size: fontSize, font });
+    page.drawText(formatTime(session.startTime), { x: 65, y, size: fontSize, font });
+    page.drawText(formatTime(session.endTime), { x: 130, y, size: fontSize, font });
 
-    const lines = wrapWords(session.comments, 41).slice(0, 2);
+    const lines = wrapWords(session.comments || '', 41).slice(0, 2);
     lines.forEach((line, j) => {
       page.drawText(line, {
         x: 185,
@@ -70,12 +65,12 @@ async function generateAttendancePDF() {
       });
     });
 
-    if (session.online) {
+    if (session.isOnline) {
       page.drawText('X', { x: 582, y: y + 5, size: fontSize + 3, font });
     }
   });
 
-  const progress = (extra.monthlyProgress || '').slice(0, 400);
+  const progress = (extra.progressNotes || '').slice(0, 400);
   const progressLines = wrapWords(progress, 100);
   let progressY = 170;
   progressLines.forEach(line => {
@@ -91,7 +86,7 @@ async function generateAttendancePDF() {
   page.drawText(`${counts.inPersonCount}`, { x: 360, y: 210, size: fontSize, font });
 
   fs.writeFileSync(outputPath, await pdfDoc.save());
-  console.log(`✅ Attendance PDF generated at: ${outputPath}`);
+  console.log(`Attendance PDF generated at: ${outputPath}`);
   return outputPath;
 }
 

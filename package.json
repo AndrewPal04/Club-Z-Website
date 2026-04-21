@@ -10,8 +10,12 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.9.0",
+    "better-sqlite3-session-store": "^0.1.0",
     "body-parser": "^2.2.0",
     "express": "^5.1.0",
+    "express-session": "^1.19.0",
     "fs": "^0.0.1-security",
     "path": "^0.12.7",
     "pdf-lib": "^1.17.1"

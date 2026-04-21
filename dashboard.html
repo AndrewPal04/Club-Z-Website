@@ -45,6 +45,24 @@
     .option-button:hover {
       background-color: #004488;
     }
+
+    .logout-button {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-top: 24px;
+      font-size: 14px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      background-color: white;
+      color: #666;
+      cursor: pointer;
+    }
+
+    .logout-button:hover {
+      background-color: #f0f0f0;
+      color: #333;
+    }
   </style>
 </head>
 <body>
@@ -55,6 +73,9 @@
     </form>
     <form action="/attendance" method="GET">
       <button type="submit" class="option-button">Create Student Attendance Sheet</button>
+    </form>
+    <form action="/logout" method="POST">
+      <button type="submit" class="logout-button">Log Out</button>
     </form>
   </div>
 </body>
