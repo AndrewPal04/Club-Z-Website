@@ -44,6 +44,18 @@
       border: 1px solid #ccc;
       border-radius: 6px;
       font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    input.input-error {
+      border-color: #d32f2f;
+    }
+
+    .error-msg {
+      display: block;
+      color: #d32f2f;
+      font-size: 12px;
+      margin-top: 4px;
     }
 
     button {
@@ -55,6 +67,7 @@
       border-radius: 6px;
       cursor: pointer;
       font-weight: bold;
+      font-size: 16px;
     }
 
     button:hover {
@@ -65,24 +78,68 @@
 <body>
   <div class="form-container">
     <h2>Student Information</h2>
-    <form action="/submit-student" method="POST">
+    <form id="studentForm" action="/submit-student" method="POST" novalidate>
       <div class="form-group">
         <label for="studentFullName">Student's Full Name (Last, First)</label>
-        <input type="text" name="studentFullName" id="studentFullName" required>
+        <input type="text" name="studentFullName" id="studentFullName">
+        <span class="error-msg" id="nameErr"></span>
       </div>
 
       <div class="form-group">
         <label for="inPersonHours">In-Person Hours</label>
-        <input type="number" name="inPersonHours" id="inPersonHours" value="0" min="0" required>
+        <input type="number" name="inPersonHours" id="inPersonHours" value="0" min="0" max="24">
+        <span class="error-msg" id="ipErr"></span>
       </div>
 
       <div class="form-group">
         <label for="onlineHours">Online Hours</label>
-        <input type="number" name="onlineHours" id="onlineHours" value="0" min="0" required>
+        <input type="number" name="onlineHours" id="onlineHours" value="0" min="0" max="24">
+        <span class="error-msg" id="olErr"></span>
       </div>
 
       <button type="submit">Submit</button>
     </form>
   </div>
+  <script>
+    function showError(input, errId, msg) {
+      input.classList.add('input-error');
+      document.getElementById(errId).textContent = msg;
+    }
+
+    function clearError(input, errId) {
+      input.classList.remove('input-error');
+      document.getElementById(errId).textContent = '';
+    }
+
+    function validHours(val) {
+      const n = Number(val);
+      return !isNaN(n) && n >= 0 && n <= 24;
+    }
+
+    const nameInput = document.getElementById('studentFullName');
+    const ipInput   = document.getElementById('inPersonHours');
+    const olInput   = document.getElementById('onlineHours');
+
+    nameInput.addEventListener('input', () => clearError(nameInput, 'nameErr'));
+    ipInput.addEventListener('input',   () => clearError(ipInput,   'ipErr'));
+    olInput.addEventListener('input',   () => clearError(olInput,   'olErr'));
+
+    document.getElementById('studentForm').addEventListener('submit', e => {
+      let valid = true;
+      if (!nameInput.value.trim()) {
+        showError(nameInput, 'nameErr', 'Student name is required.');
+        valid = false;
+      }
+      if (!validHours(ipInput.value)) {
+        showError(ipInput, 'ipErr', 'Must be a number between 0 and 24.');
+        valid = false;
+      }
+      if (!validHours(olInput.value)) {
+        showError(olInput, 'olErr', 'Must be a number between 0 and 24.');
+        valid = false;
+      }
+      if (!valid) e.preventDefault();
+    });
+  </script>
 </body>
 </html>

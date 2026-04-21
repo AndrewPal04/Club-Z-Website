@@ -18,12 +18,14 @@ async function generatePDFBuffer(tutorData, students) {
   let totalOHours = 0;
 
   students.slice(0, 12).forEach(student => {
-    const { studentName, inPersonHours, onlineHours } = student;
-    page.drawText(studentName, { x: 80, y, size: fontSize, font });
-    page.drawText(inPersonHours.toString(), { x: 430, y, size: fontSize, font });
-    page.drawText(onlineHours.toString(), { x: 510, y, size: fontSize, font });
-    totaliPHours += Number(inPersonHours);
-    totalOHours += Number(onlineHours);
+    const name    = student.student_name;
+    const ipHours = student.in_person_hours;
+    const olHours = student.online_hours;
+    page.drawText(name, { x: 80, y, size: fontSize, font });
+    page.drawText(ipHours.toString(), { x: 430, y, size: fontSize, font });
+    page.drawText(olHours.toString(), { x: 510, y, size: fontSize, font });
+    totaliPHours += Number(ipHours);
+    totalOHours  += Number(olHours);
     y -= 29;
   });
 

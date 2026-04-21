@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Club Z — Document History</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f6f8;
+      margin: 0;
+      padding: 40px 20px;
+      box-sizing: border-box;
+    }
+
+    .page-header {
+      max-width: 860px;
+      margin: 0 auto 28px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .page-header h2 {
+      margin: 0;
+      color: #333;
+      font-size: 22px;
+    }
+
+    .back-link {
+      font-size: 14px;
+      color: #005aaa;
+      text-decoration: none;
+    }
+
+    .back-link:hover {
+      text-decoration: underline;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+      max-width: 860px;
+      margin: 0 auto;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead {
+      background-color: #f0f4f8;
+    }
+
+    th {
+      text-align: left;
+      padding: 14px 18px;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #555;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    td {
+      padding: 14px 18px;
+      font-size: 14px;
+      color: #333;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: middle;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    tr:hover td {
+      background-color: #fafcff;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 9px;
+      border-radius: 12px;
+      font-size: 11px;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .badge-timesheet {
+      background-color: #e3eeff;
+      color: #005aaa;
+    }
+
+    .badge-attendance {
+      background-color: #e6f4ea;
+      color: #2e7d32;
+    }
+
+    .download-btn {
+      display: inline-block;
+      padding: 6px 14px;
+      background-color: #005aaa;
+      color: white;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: bold;
+      text-decoration: none;
+      white-space: nowrap;
+    }
+
+    .download-btn:hover {
+      background-color: #004488;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #aaa;
+      font-size: 15px;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #aaa;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-header">
+    <h2>Document History</h2>
+    <a href="/dashboard" class="back-link">&larr; Back to Dashboard</a>
+  </div>
+
+  <div class="card">
+    <div id="content" class="loading">Loading...</div>
+  </div>
+
+  <script>
+    function formatDate(utcString) {
+      const d = new Date(utcString + 'Z');
+      return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+    }
+
+    async function loadHistory() {
+      const content = document.getElementById('content');
+      try {
+        const res = await fetch('/api/history');
+        const { timesheets, attendances } = await res.json();
+
+        const all = [
+          ...timesheets.map(d => ({
+            type: 'timesheet',
+            label: 'Tutor Time Sheet',
+            name: d.tutor_name,
+            month: d.month,
+            completedAt: d.updated_at,
+            downloadUrl: `/redownload/timesheet/${d.id}`
+          })),
+          ...attendances.map(d => ({
+            type: 'attendance',
+            label: 'Attendance Sheet',
+            name: d.student_name,
+            month: d.month,
+            completedAt: d.updated_at,
+            downloadUrl: `/redownload/attendance/${d.id}`
+          }))
+        ].sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt));
+
+        if (all.length === 0) {
+          content.innerHTML = '<div class="empty-state">No completed documents yet.<br>Finish and download a timesheet or attendance sheet to see it here.</div>';
+          return;
+        }
+
+        content.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>Type</th>
+                <th>Name / Month</th>
+                <th>Completed</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${all.map(d => `
+                <tr>
+                  <td><span class="badge badge-${d.type}">${d.label}</span></td>
+                  <td>${d.name} &mdash; ${d.month}</td>
+                  <td>${formatDate(d.completedAt)}</td>
+                  <td><a href="${d.downloadUrl}" class="download-btn">Download PDF</a></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        `;
+      } catch {
+        content.innerHTML = '<div class="empty-state">Could not load history.</div>';
+      }
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

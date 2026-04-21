@@ -1,8 +1,14 @@
+require('dotenv').config();
+
 const express = require('express');
 const bodyParser = require('body-parser');
 const session = require('express-session');
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const sanitizeHtml = require('sanitize-html');
 const db = require('./db');
 const SqliteStore = require('better-sqlite3-session-store')(session);
 const generatePDFBuffer = require('./generate-pdf');
@@ -11,6 +17,7 @@ const generateAttendancePDF = require('./generate-attendance');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.use(helmet());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
@@ -21,11 +28,19 @@ app.use(session({
   saveUninitialized: false,
   cookie: {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict',
     maxAge: 7 * 24 * 60 * 60 * 1000
   }
 }));
+
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => res.status(429).type('text').send('Too many login attempts. Please try again in 15 minutes.')
+});
 
 // ─── Auth middleware ──────────────────────────────────────────────────────────
 
@@ -37,10 +52,10 @@ function requireAuth(req, res, next) {
 // ─── Auth routes (no requireAuth) ────────────────────────────────────────────
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'index.html'));
+  res.sendFile('index.html', { root: __dirname });
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (user && bcrypt.compareSync(password, user.password_hash)) {
@@ -59,17 +74,20 @@ app.post('/logout', (req, res) => {
 // ─── Protected routes ─────────────────────────────────────────────────────────
 
 app.get('/dashboard', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard.html'));
+  res.sendFile('dashboard.html', { root: __dirname });
 });
 
 // ─── Timesheet workflow ───────────────────────────────────────────────────────
 
 app.get('/timesheet', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'timesheet.html'));
+  res.sendFile('timesheet.html', { root: __dirname });
 });
 
 app.post('/submit-timesheet', requireAuth, (req, res) => {
-  const { tutorName, month } = req.body;
+  const tutorName = sanitize(req.body.tutorName);
+  const month     = sanitize(req.body.month);
+  if (!isNonEmpty(tutorName) || !isNonEmpty(month))
+    return res.status(400).json({ error: 'Tutor name and month are required.' });
   const existingId = req.session.currentTimesheetId;
   const existing = existingId
     ? db.prepare("SELECT id FROM timesheet_sessions WHERE id = ? AND status = 'draft'").get(existingId)
@@ -98,14 +116,22 @@ app.get('/student-form', requireAuth, async (req, res) => {
   if (students.length >= 12) {
     const ts = db.prepare('SELECT * FROM timesheet_sessions WHERE id = ?').get(req.session.currentTimesheetId);
     await generatePDFBuffer({ tutorName: ts.tutor_name, month: ts.month }, students);
-    res.sendFile(path.join(__dirname, 'pdf-generated.html'));
+    res.sendFile('pdf-generated.html', { root: __dirname });
   } else {
-    res.sendFile(path.join(__dirname, 'student-hours.html'));
+    res.sendFile('student-hours.html', { root: __dirname });
   }
 });
 
 app.post('/submit-student', requireAuth, async (req, res) => {
-  const { studentFullName, inPersonHours, onlineHours } = req.body;
+  const studentFullName = sanitize(req.body.studentFullName);
+  const { inPersonHours, onlineHours } = req.body;
+  if (!isNonEmpty(studentFullName))
+    return res.status(400).json({ error: 'Student name is required.' });
+  if (!isValidHours(inPersonHours))
+    return res.status(400).json({ error: 'In-person hours must be a number between 0 and 24.' });
+  if (!isValidHours(onlineHours))
+    return res.status(400).json({ error: 'Online hours must be a number between 0 and 24.' });
+
   db.prepare(
     'INSERT INTO timesheet_students (session_id, student_name, in_person_hours, online_hours) VALUES (?, ?, ?, ?)'
   ).run(req.session.currentTimesheetId, studentFullName, +inPersonHours, +onlineHours);
@@ -120,9 +146,9 @@ app.post('/submit-student', requireAuth, async (req, res) => {
   if (students.length >= 12) {
     const ts = db.prepare('SELECT * FROM timesheet_sessions WHERE id = ?').get(req.session.currentTimesheetId);
     await generatePDFBuffer({ tutorName: ts.tutor_name, month: ts.month }, students);
-    res.sendFile(path.join(__dirname, 'pdf-generated.html'));
+    res.sendFile('pdf-generated.html', { root: __dirname });
   } else {
-    res.sendFile(path.join(__dirname, 'add-another.html'));
+    res.sendFile('add-another.html', { root: __dirname });
   }
 });
 
@@ -138,7 +164,7 @@ app.post('/add-another', requireAuth, async (req, res) => {
       'SELECT * FROM timesheet_students WHERE session_id = ?'
     ).all(req.session.currentTimesheetId);
     await generatePDFBuffer({ tutorName: ts.tutor_name, month: ts.month }, students);
-    res.sendFile(path.join(__dirname, 'pdf-generated.html'));
+    res.sendFile('pdf-generated.html', { root: __dirname });
   }
 });
 
@@ -165,11 +191,17 @@ app.get('/download-pdf', requireAuth, async (req, res) => {
 // ─── Attendance workflow ──────────────────────────────────────────────────────
 
 app.get('/attendance', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'attendance-info.html'));
+  res.sendFile('attendance-info.html', { root: __dirname });
 });
 
 app.post('/submit-attendance-info', requireAuth, (req, res) => {
-  const { studentName, tutorName, month, subjects, grade } = req.body;
+  const studentName = sanitize(req.body.studentName);
+  const tutorName   = sanitize(req.body.tutorName);
+  const month       = sanitize(req.body.month);
+  const subjects    = sanitize(req.body.subjects);
+  const grade       = sanitize(req.body.grade);
+  if ([studentName, tutorName, month, subjects, grade].some(v => !isNonEmpty(v)))
+    return res.status(400).json({ error: 'All fields are required.' });
   const existingId = req.session.currentAttendanceId;
   const existing = existingId
     ? db.prepare("SELECT id FROM attendance_sessions WHERE id = ? AND status = 'draft'").get(existingId)
@@ -192,24 +224,34 @@ app.post('/submit-attendance-info', requireAuth, (req, res) => {
 });
 
 app.get('/attendance-sessions', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'attendance-sessions.html'));
+  res.sendFile('attendance-sessions.html', { root: __dirname });
 });
 
 app.post('/submit-attendance-sessions', requireAuth, (req, res) => {
+  const entries = [];
+  for (let i = 0; i < 12; i++) {
+    const date     = sanitize(req.body[`date${i}`]);
+    const start    = sanitize(req.body[`start${i}`]);
+    const end      = sanitize(req.body[`end${i}`]);
+    const comments = sanitize(req.body[`comments${i}`]);
+    if (!date && !start && !end && !comments) continue;
+    if (!isNonEmpty(date) || !isNonEmpty(start) || !isNonEmpty(end) || !isNonEmpty(comments))
+      return res.status(400).json({ error: `All fields are required for session ${i + 1}.` });
+    if (start >= end)
+      return res.status(400).json({ error: `Start time must be before end time in session ${i + 1}.` });
+    entries.push({ date, start, end, comments, isOnline: req.body[`online${i}`] ? 1 : 0 });
+  }
+  if (entries.length === 0)
+    return res.status(400).json({ error: 'At least one session is required.' });
+
   db.prepare('DELETE FROM attendance_entries WHERE session_id = ?').run(req.session.currentAttendanceId);
 
   const insertEntry = db.prepare(
     'INSERT INTO attendance_entries (session_id, date, start_time, end_time, comments, is_online) VALUES (?, ?, ?, ?, ?, ?)'
   );
 
-  for (let i = 0; i < 12; i++) {
-    const date = req.body[`date${i}`];
-    const start = req.body[`start${i}`];
-    const end = req.body[`end${i}`];
-    const comments = req.body[`comments${i}`];
-    if (!date || !start || !end || !comments) continue;
-    const isOnline = req.body[`online${i}`] ? 1 : 0;
-    insertEntry.run(req.session.currentAttendanceId, date, start, end, comments, isOnline);
+  for (const e of entries) {
+    insertEntry.run(req.session.currentAttendanceId, e.date, e.start, e.end, e.comments, e.isOnline);
   }
 
   db.prepare(
@@ -225,10 +267,17 @@ app.post('/submit-attendance-sessions', requireAuth, (req, res) => {
 });
 
 app.get('/attendance-final', requireAuth, (req, res) => {
-  res.sendFile(path.join(__dirname, 'attendance-final.html'));
+  res.sendFile('attendance-final.html', { root: __dirname });
 });
 
 app.post('/submit-attendance-final', requireAuth, async (req, res) => {
+  const monthlyProgress = sanitize(req.body.monthlyProgress);
+  const reviewDate      = sanitize(req.body.reviewDate);
+  if (!isNonEmpty(monthlyProgress))
+    return res.status(400).json({ error: 'Monthly progress is required.' });
+  if (!isValidDate(reviewDate))
+    return res.status(400).json({ error: 'Review date must be a valid date.' });
+
   db.prepare(
     `INSERT INTO attendance_extra (session_id, progress_notes, review_date)
      VALUES (?, ?, ?)
@@ -240,7 +289,7 @@ app.post('/submit-attendance-final', requireAuth, async (req, res) => {
 
   const { info, sessions, counts, extra } = loadAttendanceData(req.session.currentAttendanceId);
   await generateAttendancePDF(info, sessions, counts, extra);
-  res.sendFile(path.join(__dirname, 'attendance-generated.html'));
+  res.sendFile('attendance-generated.html', { root: __dirname });
 });
 
 app.get('/download-attendance', requireAuth, async (req, res) => {
@@ -249,13 +298,180 @@ app.get('/download-attendance', requireAuth, async (req, res) => {
     const filePath = await generateAttendancePDF(info, sessions, counts, extra);
     db.prepare("UPDATE attendance_sessions SET status = 'complete', updated_at = datetime('now') WHERE id = ?")
       .run(req.session.currentAttendanceId);
-    res.download(filePath, 'Student_Attendance_Sheet.pdf');
+    const pdfBuf = fs.readFileSync(filePath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', 'attachment; filename=Student_Attendance_Sheet.pdf');
+    res.send(pdfBuf);
   } catch (err) {
     res.status(500).send('Error generating attendance PDF.');
   }
 });
 
+// ─── Validation & sanitization helpers ───────────────────────────────────────
+
+function sanitize(val) {
+  if (typeof val !== 'string') return val;
+  return sanitizeHtml(val, { allowedTags: [], allowedAttributes: {} });
+}
+
+function isNonEmpty(val) {
+  return typeof val === 'string' && val.trim().length > 0;
+}
+
+function isValidHours(val) {
+  const n = Number(val);
+  return !isNaN(n) && n >= 0 && n <= 24;
+}
+
+function isValidDate(val) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(val) && !isNaN(Date.parse(val));
+}
+
+// ─── History & re-download ────────────────────────────────────────────────────
+
+app.get('/history', requireAuth, (req, res) => {
+  res.sendFile('history.html', { root: __dirname });
+});
+
+app.get('/api/history', requireAuth, (req, res) => {
+  const timesheets = db.prepare(
+    "SELECT id, tutor_name, month, updated_at FROM timesheet_sessions WHERE user_id = ? AND status = 'complete' ORDER BY updated_at DESC"
+  ).all(req.session.userId);
+
+  const attendances = db.prepare(
+    "SELECT id, student_name, tutor_name, month, updated_at FROM attendance_sessions WHERE user_id = ? AND status = 'complete' ORDER BY updated_at DESC"
+  ).all(req.session.userId);
+
+  res.json({ timesheets, attendances });
+});
+
+app.get('/redownload/timesheet/:id', requireAuth, async (req, res) => {
+  try {
+    const ts = db.prepare(
+      "SELECT * FROM timesheet_sessions WHERE id = ? AND user_id = ? AND status = 'complete'"
+    ).get(req.params.id, req.session.userId);
+    if (!ts) return res.status(404).send('Document not found.');
+
+    const students = db.prepare(
+      'SELECT * FROM timesheet_students WHERE session_id = ?'
+    ).all(ts.id);
+
+    const pdfBuffer = await generatePDFBuffer(
+      { tutorName: ts.tutor_name, month: ts.month },
+      students
+    );
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Tutor_Time_Summary_${ts.month}.pdf`);
+    res.send(pdfBuffer);
+  } catch {
+    res.status(500).send('Error regenerating PDF.');
+  }
+});
+
+app.get('/redownload/attendance/:id', requireAuth, async (req, res) => {
+  try {
+    const att = db.prepare(
+      "SELECT id FROM attendance_sessions WHERE id = ? AND user_id = ? AND status = 'complete'"
+    ).get(req.params.id, req.session.userId);
+    if (!att) return res.status(404).send('Document not found.');
+
+    const { info, sessions, counts, extra } = loadAttendanceData(att.id);
+    const filePath = await generateAttendancePDF(info, sessions, counts, extra);
+    const pdfBuf = fs.readFileSync(filePath);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=Student_Attendance_Sheet_${info.month}.pdf`);
+    res.send(pdfBuf);
+  } catch {
+    res.status(500).send('Error regenerating PDF.');
+  }
+});
+
+// ─── Drafts & resume ─────────────────────────────────────────────────────────
+
+app.get('/drafts', requireAuth, (req, res) => {
+  const monthPattern = strftimeCurrentMonth();
+  const timesheets = db.prepare(
+    "SELECT id, tutor_name, month, updated_at FROM timesheet_sessions WHERE user_id = ? AND status = 'draft' AND strftime('%Y-%m', updated_at) = ?"
+  ).all(req.session.userId, monthPattern);
+
+  const attendances = db.prepare(
+    "SELECT id, student_name, tutor_name, month, updated_at FROM attendance_sessions WHERE user_id = ? AND status = 'draft' AND strftime('%Y-%m', updated_at) = ?"
+  ).all(req.session.userId, monthPattern);
+
+  res.json({ timesheets, attendances });
+});
+
+app.get('/resume/timesheet/:id', requireAuth, (req, res) => {
+  const ts = db.prepare(
+    "SELECT id FROM timesheet_sessions WHERE id = ? AND user_id = ? AND status = 'draft'"
+  ).get(req.params.id, req.session.userId);
+  if (!ts) return res.redirect('/dashboard');
+
+  req.session.currentTimesheetId = ts.id;
+  const hasStudents = db.prepare('SELECT 1 FROM timesheet_students WHERE session_id = ?').get(ts.id);
+  res.redirect(hasStudents ? '/student-form' : '/timesheet');
+});
+
+app.get('/resume/attendance/:id', requireAuth, (req, res) => {
+  const att = db.prepare(
+    "SELECT id FROM attendance_sessions WHERE id = ? AND user_id = ? AND status = 'draft'"
+  ).get(req.params.id, req.session.userId);
+  if (!att) return res.redirect('/dashboard');
+
+  req.session.currentAttendanceId = att.id;
+  const hasEntries = db.prepare('SELECT 1 FROM attendance_entries WHERE session_id = ?').get(att.id);
+  const hasExtra = db.prepare('SELECT review_date FROM attendance_extra WHERE session_id = ?').get(att.id);
+
+  if (hasExtra && hasExtra.review_date) return res.redirect('/attendance-final');
+  if (hasEntries) return res.redirect('/attendance-sessions');
+  res.redirect('/attendance');
+});
+
+// Pre-fill data endpoints (called by form pages on load to restore draft values)
+
+app.get('/draft/timesheet', requireAuth, (req, res) => {
+  const id = req.session.currentTimesheetId;
+  if (!id) return res.json(null);
+  const ts = db.prepare('SELECT tutor_name, month FROM timesheet_sessions WHERE id = ? AND user_id = ?')
+    .get(id, req.session.userId);
+  res.json(ts || null);
+});
+
+app.get('/draft/attendance/info', requireAuth, (req, res) => {
+  const id = req.session.currentAttendanceId;
+  if (!id) return res.json(null);
+  const att = db.prepare(
+    'SELECT student_name, tutor_name, month, subjects, grade FROM attendance_sessions WHERE id = ? AND user_id = ?'
+  ).get(id, req.session.userId);
+  res.json(att || null);
+});
+
+app.get('/draft/attendance/sessions', requireAuth, (req, res) => {
+  const id = req.session.currentAttendanceId;
+  if (!id) return res.json([]);
+  const entries = db.prepare(
+    'SELECT date, start_time, end_time, comments, is_online FROM attendance_entries WHERE session_id = ? ORDER BY id'
+  ).all(id);
+  res.json(entries);
+});
+
+app.get('/draft/attendance/extra', requireAuth, (req, res) => {
+  const id = req.session.currentAttendanceId;
+  if (!id) return res.json(null);
+  const extra = db.prepare(
+    'SELECT progress_notes, review_date FROM attendance_extra WHERE session_id = ?'
+  ).get(id);
+  res.json(extra || null);
+});
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function strftimeCurrentMonth() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  return `${y}-${m}`;
+}
 
 function loadAttendanceData(sessionId) {
   const row = db.prepare('SELECT * FROM attendance_sessions WHERE id = ?').get(sessionId);
